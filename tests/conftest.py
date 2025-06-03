@@ -4,11 +4,11 @@ conftest.py — Pytest MicroPython compatibility shims.
 Mocks all MicroPython-specific modules for desktop testing.
 """
 
-import sys
-import types
-import json as std_json
 import base64
 import binascii
+import json as std_json
+import sys
+import types
 
 # -------------------------
 # Mock Classes & Functions

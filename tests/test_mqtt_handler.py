@@ -1,7 +1,8 @@
 import pytest
-import ujson
 import ubinascii
-from mqtt_handler import mqtt_callback, handle_ota_update
+import ujson
+
+from mqtt_handler import handle_ota_update, mqtt_callback
 
 # --- Mock Classes ---
 
@@ -59,6 +60,7 @@ def test_handle_ota_update_writes_files_and_publishes_success(tmp_path, monkeypa
     Test that handle_ota_update writes all files and publishes 'success' on completion.
     """
     from mqtt_handler import handle_ota_update
+
     # Prepare test OTA payload
     test_file_content = b'print("Hello, world!")'
     payload = [

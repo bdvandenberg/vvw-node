@@ -1,14 +1,16 @@
 # mqtt_handler.py
 
-import ujson
 import time
+
 import machine
-from umqtt.simple import MQTTClient
-from connectivity import connect_wifi
-from sensors import read_dht
-from config import DEVICE_ID
 import ubinascii
+import ujson
+from umqtt.simple import MQTTClient
+
+from config import DEVICE_ID
+from connectivity import connect_wifi
 from ota import handle_ota_update
+from sensors import read_dht
 
 RELAY_PINS = {
     "relay1": machine.Pin(16, machine.Pin.OUT),

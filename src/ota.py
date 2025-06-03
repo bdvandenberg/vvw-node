@@ -7,11 +7,14 @@ Handles multi-file updates by writing all provided files and rebooting the devic
 Publishes MQTT status ('success' or 'fail') after OTA operation.
 """
 
-import ujson
-import ubinascii
 import time
+
 import machine
+import ubinascii
+import ujson
+
 from config import DEVICE_ID
+
 
 def handle_ota_update(msg, mqtt_client=None):
     """

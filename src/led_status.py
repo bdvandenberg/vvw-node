@@ -1,6 +1,7 @@
-import machine
-import time
 import _thread
+import time
+
+import machine
 
 LED_PIN = 25
 

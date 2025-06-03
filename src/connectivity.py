@@ -1,5 +1,7 @@
-import network
 import time
+
+import network
+
 
 def connect_wifi(ssid, password, attempts=20, interval=0.5):
     wlan = network.WLAN(network.STA_IF)

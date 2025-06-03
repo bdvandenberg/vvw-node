@@ -1,7 +1,8 @@
+import os
+
 import machine
 import ubinascii
 import ujson
-import os
 
 CONFIG_PATH = "config.json"
 

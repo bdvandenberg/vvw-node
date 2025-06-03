@@ -1,9 +1,11 @@
-import bluetooth
 import struct
+
+import bluetooth
 import machine
-from bluetooth import BLE
-from config import DEVICE_NAME, save_config
 import ujson
+from bluetooth import BLE
+
+from config import DEVICE_NAME, save_config
 
 CHAR_UUIDS = {
     "wifi_ssid":  bluetooth.UUID("b05758b3-...2ce"),

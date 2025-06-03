@@ -1,10 +1,12 @@
 import os
-import machine
 import time
-from config import CONFIG_PATH, load_config
+
+import machine
+
 from ble_setup import run_ble_setup
-from mqtt_handler import run_normal_mode
+from config import CONFIG_PATH, load_config
 from led_status import LedStatus
+from mqtt_handler import run_normal_mode
 
 BUTTON_PIN = 14
 DEV_MODE = True  # Set to False for production
