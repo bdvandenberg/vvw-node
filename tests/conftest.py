@@ -1,25 +1,33 @@
+"""
+conftest.py — Pytest MicroPython compatibility shims.
+
+Mocks all MicroPython-specific modules for desktop testing.
+"""
+
 import sys
 import types
 import json as std_json
 import base64
-import sys
-import types
 import binascii
 
+# -------------------------
+# Mock Classes & Functions
+# -------------------------
 
+# --- DHT Sensor ---
 class MockDHT22:
     def __init__(self, pin):
         self.pin = pin
-        self._temperature = 25.0  # Default mock value
-        self._humidity = 50.0     # Default mock value
+        self._temperature = 25.0
+        self._humidity = 50.0
     def measure(self):
-        pass  # In real tests, you could have this change internal state
+        pass
     def temperature(self):
         return self._temperature
     def humidity(self):
         return self._humidity
 
-
+# --- WLAN (network) ---
 class MockWLAN:
     STA_IF = "STA_IF"
     AP_IF = "AP_IF"
@@ -35,11 +43,11 @@ class MockWLAN:
     def isconnected(self):
         return self.connected
     def connect(self, ssid, password):
-        self.connected = True  # Simulate success
+        self.connected = True
     def ifconfig(self):
         return self._ifconfig
 
-
+# --- MQTT Client ---
 class MockMQTTClient:
     def __init__(self, *args, **kwargs):
         self.subscriptions = []
@@ -58,7 +66,7 @@ class MockMQTTClient:
     def disconnect(self):
         pass
 
-
+# --- Pin (machine) ---
 class MockPin:
     OUT = "OUT"
     IN = "IN"
@@ -66,35 +74,43 @@ class MockPin:
     def __init__(self, pin, mode=None, pull=None):
         self.pin = pin
         self.mode = mode
+        self.pull = pull
         self._value = 0
     def value(self, val=None):
         if val is not None:
             self._value = val
         return self._value
-    
-def unique_id():
-    # Return a fixed bytes object (as MicroPython does)
-    return b'\xaa\xbb\xcc\xdd\xee\xff'
-    
 
+def unique_id():
+    """Return a fixed device unique ID as bytes."""
+    return b'\xaa\xbb\xcc\xdd\xee\xff'
+
+# -------------------------
+# Module Registrations
+# -------------------------
+
+# DHT module (dht)
 mock_dht = types.SimpleNamespace(
     DHT22=MockDHT22,
     DHT11=MockDHT22,
 )
 sys.modules['dht'] = mock_dht
 
+# Network module (network)
 mock_network = types.SimpleNamespace(
     WLAN=MockWLAN,
     STA_IF=MockWLAN.STA_IF,
     AP_IF=MockWLAN.AP_IF,
 )
 sys.modules['network'] = mock_network
-    
+
+# MQTT module (umqtt.simple)
 mock_umqtt_simple = types.SimpleNamespace(
     MQTTClient=MockMQTTClient,
 )
 sys.modules['umqtt.simple'] = mock_umqtt_simple
 
+# Machine module (machine)
 mock_machine = types.SimpleNamespace(
     Pin=MockPin,
     reset=lambda: print("[Mock] machine.reset() called"),
@@ -102,11 +118,13 @@ mock_machine = types.SimpleNamespace(
 )
 sys.modules["machine"] = mock_machine
 
+# ujson → Python stdlib json
 sys.modules['ujson'] = std_json
+
+# ubinascii → Python stdlib equivalents
 mock_ubinascii = types.SimpleNamespace(
     a2b_base64=base64.b64decode,
     b2a_base64=base64.b64encode,
     hexlify=binascii.hexlify,
 )
-
 sys.modules['ubinascii'] = mock_ubinascii
