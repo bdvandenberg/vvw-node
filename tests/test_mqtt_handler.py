@@ -82,7 +82,7 @@ def test_handle_ota_update_writes_files_and_publishes_success(tmp_path, monkeypa
         assert f.read() == b"config = True"
 
     # Check that a success status was published
-    assert any(topic.endswith(b"ota_status") and payload == b"success" for topic, payload in client.published)
+    assert any(topic.endswith("ota_status") and payload == b"success" for topic, payload in client.published)
 
 def test_handle_ota_update_failure_publishes_fail(monkeypatch):
     """
@@ -101,4 +101,4 @@ def test_handle_ota_update_failure_publishes_fail(monkeypatch):
     handle_ota_update(bad_msg, mqtt_client=client)
 
     # Check that a fail status was published
-    assert any(topic.endswith(b"ota_status") and payload == b"fail" for topic, payload in client.published)
+    assert any(topic.endswith("ota_status") and payload == b"fail" for topic, payload in client.published)
