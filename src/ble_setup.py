@@ -25,22 +25,25 @@ def run_ble_setup():
     chars = {}
 
     def on_write(event, data):
-        if event != 3:
+        if event != 3:  # gatts_write
             return
-        handle = data[1]
-        value = data[2].decode()
-
+        conn_handle, attr_handle = data
         for key, (_, h) in chars.items():
-            if handle == h:
+            if attr_handle == h:
+                value = ble.gatts_read(h).decode()
                 received_data[key] = value
                 print(f"{key} received: {value}")
                 break
 
         if len(received_data) == len(CHAR_UUIDS):
             print("All data received. Saving config and rebooting...")
-            ble.gap_advertise(None)
-            save_config(received_data)
-            machine.reset()
+            try:
+                ble.gap_advertise(None)
+                save_config(received_data)
+            except Exception as e:
+                print(f"Error saving config: {e}")
+            finally:
+                machine.reset()
 
     service = [(uuid, bluetooth.FLAG_WRITE) for uuid in CHAR_UUIDS.values()]
     ((handles,),) = ble.gatts_register_services([(SERVICE_UUID, service)])
@@ -50,5 +53,6 @@ def run_ble_setup():
         ble.gatts_set_buffer(handle, 100)
 
     ble.irq(handler=on_write)
-    ble.gap_advertise(100_000, adv_data=advertise_payload(DEVICE_NAME))
+    ble.gap_advertise(200, adv_data=advertise_payload(DEVICE_NAME))
     print(f"BLE advertising as {DEVICE_NAME}...")
+

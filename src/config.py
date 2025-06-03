@@ -1,6 +1,7 @@
 import machine
 import ubinascii
 import ujson
+import os
 
 CONFIG_PATH = "config.json"
 
@@ -16,5 +17,9 @@ def save_config(data):
         f.write(ujson.dumps(config))
 
 def load_config():
-    with open(CONFIG_PATH, "r") as f:
-        return ujson.loads(f.read())
+    try:
+        with open(CONFIG_PATH, "r") as f:
+            return ujson.loads(f.read())
+    except (OSError, ValueError):
+        # OSError: file not found; ValueError: invalid JSON
+        return None
