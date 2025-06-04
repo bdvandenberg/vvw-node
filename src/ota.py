@@ -1,4 +1,5 @@
 # ota.py
+# mypy: disable-error-code=import-untyped
 
 """
 OTA update handler for Pico W.
@@ -35,9 +36,9 @@ def handle_ota_update(msg, mqtt_client=None):
     try:
         files = ujson.loads(msg)
         for entry in files:
-            filename = entry['filename']
-            content = ubinascii.a2b_base64(entry['content'])
-            with open(filename, 'wb') as f:
+            filename = entry["filename"]
+            content = ubinascii.a2b_base64(entry["content"])
+            with open(filename, "wb") as f:
                 f.write(content)
             print(f"[OTA] Updated {filename}")
         print("[OTA] All files updated, rebooting in 1s")

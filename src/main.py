@@ -14,8 +14,10 @@ DEV_MODE = True  # Set to False for production
 button = machine.Pin(BUTTON_PIN, machine.Pin.IN, machine.Pin.PULL_UP)
 led = LedStatus()  # Onboard LED status handler
 
+
 def button_pressed():
     return button.value() == 0  # active low
+
 
 def wait_for_button(timeout_ms=5000):
     print("Waiting for button press to enable BLE setup...")
@@ -30,6 +32,7 @@ def wait_for_button(timeout_ms=5000):
     print("No button press detected.")
     led.set("off")  # Turn off LED if not proceeding to BLE
     return False
+
 
 def main():
     print("[BOOT] Starting main...")
@@ -54,6 +57,7 @@ def main():
             print("[BLE] BLE setup not authorized. Reboot with button held.")
             led.set("off")
 
+
 def main_dev():
     print("[DEV] Starting in development mode...")
     if CONFIG_PATH in os.listdir():
@@ -71,6 +75,7 @@ def main_dev():
         print("[CONFIG] No config found. Running BLE setup immediately (dev mode).")
         led.set("fast")
         run_ble_setup()
+
 
 if __name__ == "__main__":
     try:

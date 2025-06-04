@@ -1,9 +1,9 @@
 # mqtt_handler.py
+# mypy: disable-error-code=import-untyped
 
 import time
 
 import machine
-import ubinascii
 import ujson
 from umqtt.simple import MQTTClient
 
@@ -18,6 +18,7 @@ RELAY_PINS = {
 }
 
 client = None
+
 
 def mqtt_callback(topic, msg):
     """
@@ -39,7 +40,8 @@ def mqtt_callback(topic, msg):
             print("Relay cmd error:", e)
     elif topic.endswith(b"/ota"):
         print("[MQTT] OTA update received")
-        handle_ota_update(msg, mqtt_client=client) 
+        handle_ota_update(msg, mqtt_client=client)
+
 
 def connect_mqtt(client_id, broker_ip):
     """
@@ -66,6 +68,7 @@ def connect_mqtt(client_id, broker_ip):
     client.subscribe(f"devices/{client_id}/ota")
     client.publish(f"devices/{client_id}/status", b"online")
     return client
+
 
 def run_normal_mode(config):
     """

@@ -5,6 +5,7 @@ import machine
 
 LED_PIN = 25
 
+
 class LedStatus:
     def __init__(self, pin=LED_PIN):
         self.led = machine.Pin(pin, machine.Pin.OUT)
