@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "VVW node"
+name = "vvw-node"
 version = "0.1.0"
 description = "Pico W floor heating node"
 

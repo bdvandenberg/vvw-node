@@ -6,11 +6,11 @@ import machine
 from config import DEVICE_NAME, save_config
 
 CHAR_UUIDS = {
-    "wifi_ssid": bluetooth.UUID("b05758b3-...2ce"),
-    "wifi_pwd": bluetooth.UUID("b05758b3-...2cf"),
-    "mqtt_ip": bluetooth.UUID("b05758b3-...2d0"),
+    "wifi_ssid": bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02cd"),
+    "wifi_pwd": bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02ce"),
+    "mqtt_ip": bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02cf"),
 }
-SERVICE_UUID = bluetooth.UUID("b05758b3-...2cd")
+SERVICE_UUID = bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02d0")
 
 
 def advertise_payload(name):
@@ -48,14 +48,27 @@ def run_ble_setup():
                 machine.reset()
 
     service = [(uuid, bluetooth.FLAG_WRITE) for uuid in CHAR_UUIDS.values()]
-    ((handles,),) = ble.gatts_register_services([(SERVICE_UUID, service)])
+    # Ensure handles is always a tuple/list
+    (handles,) = ble.gatts_register_services([(SERVICE_UUID, service)])
+    # handles is now (9, 11, 13)
     chars = {
-        name: (uuid, handle) for name, (uuid, handle) in zip(CHAR_UUIDS.keys(), handles)
+        name: (uuid, handle)
+        for name, uuid, handle in zip(CHAR_UUIDS.keys(), CHAR_UUIDS.values(), handles)
     }
+
+
 
     for _, handle in chars.values():
         ble.gatts_set_buffer(handle, 100)
 
-    ble.irq(handler=on_write)
+    ble.irq(on_write)
     ble.gap_advertise(200, adv_data=advertise_payload(DEVICE_NAME))
     print(f"BLE advertising as {DEVICE_NAME}...")
+    
+    # Block here to keep BLE running until config is saved
+    try:
+        while True:
+            machine.idle()
+    except KeyboardInterrupt:
+        print("BLE setup interrupted, exiting.")
+
