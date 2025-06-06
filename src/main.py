@@ -1,9 +1,9 @@
 import os
-import time
 import sys
+import time
+import traceback
 
 import machine
-import traceback
 
 from ble_setup import run_ble_setup
 from config import CONFIG_PATH, load_config
@@ -13,6 +13,7 @@ from mqtt_handler import run_normal_mode
 FATAL_LOG_PATH = "fatal_error.log"
 
 led = LedStatus()  # Onboard LED status handler
+
 
 def main():
     if CONFIG_PATH in os.listdir():
@@ -27,9 +28,10 @@ def main():
             led.set("fast")
             run_ble_setup()
     else:
-        print("[CONFIG] No config found. Running BLE setup immediately (dev mode).")
+        print("[CONFIG] No config found. Running BLE setup.")
         led.set("fast")
         run_ble_setup()
+
 
 if __name__ == "__main__":
     try:
@@ -51,5 +53,3 @@ if __name__ == "__main__":
         led.set("fast")
         time.sleep(5)
         machine.reset()
-
-

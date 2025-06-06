@@ -56,19 +56,16 @@ def run_ble_setup():
         for name, uuid, handle in zip(CHAR_UUIDS.keys(), CHAR_UUIDS.values(), handles)
     }
 
-
-
     for _, handle in chars.values():
         ble.gatts_set_buffer(handle, 100)
 
     ble.irq(on_write)
     ble.gap_advertise(200, adv_data=advertise_payload(DEVICE_NAME))
     print(f"BLE advertising as {DEVICE_NAME}...")
-    
+
     # Block here to keep BLE running until config is saved
     try:
         while True:
             machine.idle()
     except KeyboardInterrupt:
         print("BLE setup interrupted, exiting.")
-
