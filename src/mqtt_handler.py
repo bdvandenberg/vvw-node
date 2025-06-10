@@ -1,106 +1,102 @@
 # mqtt_handler.py
-# mypy: disable-error-code=import-untyped
 
 import time
-
 import machine
 import ujson
 from umqtt.simple import MQTTClient
 
-from config import DEVICE_ID
 from connectivity import connect_wifi
 from ota import handle_ota_update
 from sensors import read_dht
 
-RELAY_PINS = {
-    "relay1": machine.Pin(16, machine.Pin.OUT),
-    "relay2": machine.Pin(17, machine.Pin.OUT),
-}
 
-client = None
-
-
-def mqtt_callback(topic, msg):
+class RelayController:
     """
-    Main MQTT callback handler.
-
-    Handles messages for:
-    - Relay control on topic 'devices/{DEVICE_ID}/relay'.
-    - OTA updates on topic 'devices/{DEVICE_ID}/ota'.
+    Handles GPIO relay control.
     """
-    print(f"[MQTT] {topic} = {msg}")
-    if topic.endswith(b"/relay"):
+    def __init__(self):
+        self.relay_pins = {
+            "relay1": machine.Pin(16, machine.Pin.OUT),
+            "relay2": machine.Pin(17, machine.Pin.OUT),
+        }
+        self.set_all(False)
+
+    def set_all(self, state: bool):
+        for pin in self.relay_pins.values():
+            pin.value(1 if state else 0)
+
+    def update_from_dict(self, data: dict):
+        for name, state in data.items():
+            if name in self.relay_pins:
+                self.relay_pins[name].value(1 if state else 0)
+                print(f"[RELAY] {name} -> {'ON' if state else 'OFF'}")
+
+
+class MQTTHandler:
+    """
+    Manages MQTT connection and communication.
+    """
+    def __init__(self, client_id: str, broker_ip: str, relay_ctrl: RelayController):
+        self.client = MQTTClient(client_id, broker_ip)
+        self.client.set_callback(self._callback)
+        self.client_id = client_id
+        self.relay_ctrl = relay_ctrl
+
+    def _callback(self, topic, msg):
+        print(f"[MQTT] {topic} = {msg}")
         try:
-            data = ujson.loads(msg)
-            for name, state in data.items():
-                if name in RELAY_PINS:
-                    RELAY_PINS[name].value(1 if state else 0)
-                    print(f"Set {name} to {'ON' if state else 'OFF'}")
+            if topic.endswith(b"/relay"):
+                self.relay_ctrl.update_from_dict(ujson.loads(msg))
+            elif topic.endswith(b"/ota"):
+                print("[MQTT] OTA update requested")
+                handle_ota_update(msg, mqtt_client=self.client)
         except Exception as e:
-            print("Relay cmd error:", e)
-    elif topic.endswith(b"/ota"):
-        print("[MQTT] OTA update received")
-        handle_ota_update(msg, mqtt_client=client)
+            print(f"[MQTT] Callback error: {e}")
+
+    def connect(self):
+        self.client.connect()
+        self.client.subscribe(f"devices/{self.client_id}/relay")
+        self.client.subscribe(f"devices/{self.client_id}/ota")
+        self.client.publish(f"devices/{self.client_id}/status", b"online")
+
+    def check_msg(self):
+        self.client.check_msg()
+
+    def publish_sensor_data(self, data):
+        topic = f"devices/{self.client_id}/sensors"
+        self.client.publish(topic, ujson.dumps(data))
+
+    def disconnect(self):
+        self.client.disconnect()
 
 
-def connect_mqtt(client_id, broker_ip):
+class NodeApp:
     """
-    Connects to the MQTT broker and subscribes to relevant topics.
-
-    Subscribes to:
-        - 'devices/{client_id}/relay' for relay control.
-        - 'devices/{client_id}/ota' for OTA update commands.
-
-    Publishes a status message on 'devices/{client_id}/status' when online.
-
-    Args:
-        client_id (str): Unique identifier for the MQTT client (usually the device ID).
-        broker_ip (str): IP address or hostname of the MQTT broker.
-
-    Returns:
-        MQTTClient: The initialized and connected MQTT client.
+    Represents the Pico Node main application logic.
     """
-    global client
-    client = MQTTClient(client_id, broker_ip)
-    client.set_callback(mqtt_callback)
-    client.connect()
-    client.subscribe(f"devices/{client_id}/relay")
-    client.subscribe(f"devices/{client_id}/ota")
-    client.publish(f"devices/{client_id}/status", b"online")
-    return client
+    def __init__(self, config: dict):
+        self.config = config
+        self.relay_ctrl = RelayController()
+        self.mqtt = MQTTHandler(config["device_id"], config["mqtt_ip"], self.relay_ctrl)
 
+    def run(self):
+        self.relay_ctrl.set_all(False)
 
-def run_normal_mode(config):
-    """
-    Runs the normal device operation mode:
-    - Connects to WiFi using credentials from config.
-    - Connects to MQTT broker.
-    - Periodically reads sensors and publishes data.
-    - Listens for MQTT relay control and OTA update commands.
+        if not connect_wifi(self.config["wifi_ssid"], self.config["wifi_pwd"]):
+            print("[WIFI] Connection failed")
+            return
 
-    Args:
-        config (dict): Device configuration.
+        self.mqtt.connect()
 
-    Returns:
-        None
-    """
-    # Ensure all relays are OFF at startup
-    for pin in RELAY_PINS.values():
-        pin.value(0)
-
-    if not connect_wifi(config["wifi_ssid"], config["wifi_pwd"]):
-        return
-
-    mqtt = connect_mqtt(config["device_id"], config["mqtt_ip"])
-    try:
-        last_pub = time.ticks_ms()
-        while True:
-            mqtt.check_msg()
-            if time.ticks_diff(time.ticks_ms(), last_pub) > 5000:
-                data = read_dht()
-                if data:
-                    mqtt.publish(f"devices/{DEVICE_ID}/sensors", ujson.dumps(data))
-                last_pub = time.ticks_ms()
-            time.sleep(0.1)
-    finally:
-        mqtt.disconnect()
+        try:
+            last_pub = time.ticks_ms()
+            while True:
+                self.mqtt.check_msg()
+                if time.ticks_diff(time.ticks_ms(), last_pub) > 5000:
+                    data = read_dht()
+                    if data:
+                        self.mqtt.publish_sensor_data(data)
+                    last_pub = time.ticks_ms()
+                time.sleep(0.1)
+        finally:
+            self.mqtt.disconnect()

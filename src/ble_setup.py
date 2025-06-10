@@ -1,71 +1,97 @@
-import struct
-
+import asyncio
+import aioble
 import bluetooth
 import machine
 
 from config import DEVICE_NAME, save_config
 
-CHAR_UUIDS = {
-    "wifi_ssid": bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02cd"),
-    "wifi_pwd": bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02ce"),
-    "mqtt_ip": bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02cf"),
-}
-SERVICE_UUID = bluetooth.UUID("b05758b3-18b2-4c82-b819-19d8ffdf02d0")
+class BLEConfigurator:
+    """
+    BLEConfigurator handles Bluetooth Low Energy configuration exchange.
+    
+    It advertises a GATT service with writable characteristics, waits for values
+    to be written (e.g., WiFi SSID, password, MQTT broker IP), and stores them 
+    using `save_config()`. After receiving all values, it reboots the device.
+    """
 
-
-def advertise_payload(name):
-    payload = bytearray()
-    payload.extend(struct.pack("BB", len(name) + 1, 0x09))
-    payload.extend(name.encode("utf-8"))
-    return payload
-
-
-def run_ble_setup():
-    ble = bluetooth.BLE()
-    ble.active(True)
-    received_data = {}
-    chars = {}
-
-    def on_write(event, data):
-        if event != 3:  # gatts_write
-            return
-        conn_handle, attr_handle = data
-        for key, (_, h) in chars.items():
-            if attr_handle == h:
-                value = ble.gatts_read(h).decode()
-                received_data[key] = value
-                print(f"{key} received: {value}")
-                break
-
-        if len(received_data) == len(CHAR_UUIDS):
-            print("All data received. Saving config and rebooting...")
-            try:
-                ble.gap_advertise(None)
-                save_config(received_data)
-            except Exception as e:
-                print(f"Error saving config: {e}")
-            finally:
-                machine.reset()
-
-    service = [(uuid, bluetooth.FLAG_WRITE) for uuid in CHAR_UUIDS.values()]
-    # Ensure handles is always a tuple/list
-    (handles,) = ble.gatts_register_services([(SERVICE_UUID, service)])
-    # handles is now (9, 11, 13)
-    chars = {
-        name: (uuid, handle)
-        for name, uuid, handle in zip(CHAR_UUIDS.keys(), CHAR_UUIDS.values(), handles)
+    # UUIDs for service and characteristics (custom 16-bit UUIDs recommended)
+    SERVICE_UUID = bluetooth.UUID(0xFFB0)
+    CHAR_UUIDS = {
+        "wifi_ssid": bluetooth.UUID(0xFFB1),
+        "wifi_pwd":  bluetooth.UUID(0xFFB2),
+        "mqtt_ip":   bluetooth.UUID(0xFFB3),
+        # Add more fields here if needed (no code change required elsewhere)
     }
 
-    for _, handle in chars.values():
-        ble.gatts_set_buffer(handle, 100)
+    def __init__(self):
+        """
+        Initialize the BLE configurator.
 
-    ble.irq(on_write)
-    ble.gap_advertise(200, adv_data=advertise_payload(DEVICE_NAME))
-    print(f"BLE advertising as {DEVICE_NAME}...")
+        Args:
+            device_name (str): The BLE advertisement name for this device.
+        """
+        self.received = {}
 
-    # Block here to keep BLE running until config is saved
-    try:
-        while True:
-            machine.idle()
-    except KeyboardInterrupt:
-        print("BLE setup interrupted, exiting.")
+        # Create GATT service
+        self.service = aioble.Service(self.SERVICE_UUID)
+
+        # Create a dict of characteristics with write support
+        self.chars = {
+            key: aioble.Characteristic(self.service, uuid, write=True)
+            for key, uuid in self.CHAR_UUIDS.items()
+        }
+        
+        # Register service after defining characteristics
+        aioble.register_services(self.service)
+
+    async def wait_for_write(self, char: aioble.Characteristic, key: str):
+        """
+        Waits for a write event on a given characteristic and stores the result.
+
+        Args:
+            char (aioble.Characteristic): The characteristic to monitor.
+            key (str): The key to associate with the received value.
+        """
+        await char.written()  # Wait for a client to write
+        value = char.read()   # Read the written value
+        value_str = value.decode().strip()
+        print(f"[BLE] {key} received: {value_str}")
+        self.received[key] = value_str
+
+    async def run(self):
+        """
+        Starts BLE advertisement, waits for writes to all defined characteristics,
+        saves the config, and reboots the device.
+        """
+        print("[BLE] Starting BLE setup...")
+
+        try:
+            async with await aioble.advertise(
+                150_000,
+                timeout_ms=60_000,
+                name=DEVICE_NAME,
+                services=[self.SERVICE_UUID]
+            ) as conn:
+
+                print(f"[BLE] Advertising as '{DEVICE_NAME}', waiting for data...")
+
+                # Dynamically build write tasks for all characteristics
+                tasks = [
+                    self.wait_for_write(char, key)
+                    for key, char in self.chars.items()
+                ]
+
+                await asyncio.gather(*tasks)
+
+                print("[BLE] All data received. Saving config...")
+                save_config(self.received)
+
+                print("[BLE] Disconnecting...")
+                await conn.disconnect()
+
+        except asyncio.TimeoutError:
+            print("[BLE] No connection. Timeout.")
+
+        print("[BLE] Waiting before reboot...")
+        await asyncio.sleep(1.0)
+        machine.reset()

@@ -23,17 +23,14 @@ def save_config(data):
     except (OSError, ValueError):
         config = {}
 
-    config["device_id"] = DEVICE_ID  # Always update device_id
-    config.update(data)  # Overwrite/add new keys
+    config["device_id"] = DEVICE_ID  # Always update device_id and device_name
+    config["device_name"] = DEVICE_NAME
+    config.update(data)              # Overwrite/add new keys
 
     with open(CONFIG_PATH, "w") as f:
         f.write(ujson.dumps(config))
 
 
 def load_config():
-    try:
-        with open(CONFIG_PATH, "r") as f:
-            return ujson.loads(f.read())
-    except (OSError, ValueError):
-        # OSError: file not found; ValueError: invalid JSON
-        return None
+    with open(CONFIG_PATH, "r") as f:
+        return ujson.loads(f.read())
