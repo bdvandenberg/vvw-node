@@ -1,6 +1,7 @@
 # mqtt_handler.py
 
 import time
+
 import machine
 import ujson
 from umqtt.simple import MQTTClient
@@ -14,6 +15,7 @@ class RelayController:
     """
     Handles GPIO relay control.
     """
+
     def __init__(self):
         self.relay_pins = {
             "relay1": machine.Pin(16, machine.Pin.OUT),
@@ -36,6 +38,7 @@ class MQTTHandler:
     """
     Manages MQTT connection and communication.
     """
+
     def __init__(self, client_id: str, broker_ip: str, relay_ctrl: RelayController):
         self.client = MQTTClient(client_id, broker_ip)
         self.client.set_callback(self._callback)
@@ -74,6 +77,7 @@ class NodeApp:
     """
     Represents the Pico Node main application logic.
     """
+
     def __init__(self, config: dict):
         self.config = config
         self.relay_ctrl = RelayController()

@@ -1,16 +1,18 @@
 import asyncio
+
 import aioble
 import bluetooth
 import machine
 
 from config import DEVICE_NAME, save_config
 
+
 class BLEConfigurator:
     """
     BLEConfigurator handles Bluetooth Low Energy configuration exchange.
-    
+
     It advertises a GATT service with writable characteristics, waits for values
-    to be written (e.g., WiFi SSID, password, MQTT broker IP), and stores them 
+    to be written (e.g., WiFi SSID, password, MQTT broker IP), and stores them
     using `save_config()`. After receiving all values, it reboots the device.
     """
 
@@ -18,8 +20,8 @@ class BLEConfigurator:
     SERVICE_UUID = bluetooth.UUID(0xFFB0)
     CHAR_UUIDS = {
         "wifi_ssid": bluetooth.UUID(0xFFB1),
-        "wifi_pwd":  bluetooth.UUID(0xFFB2),
-        "mqtt_ip":   bluetooth.UUID(0xFFB3),
+        "wifi_pwd": bluetooth.UUID(0xFFB2),
+        "mqtt_ip": bluetooth.UUID(0xFFB3),
         # Add more fields here if needed (no code change required elsewhere)
     }
 
@@ -40,7 +42,7 @@ class BLEConfigurator:
             key: aioble.Characteristic(self.service, uuid, write=True)
             for key, uuid in self.CHAR_UUIDS.items()
         }
-        
+
         # Register service after defining characteristics
         aioble.register_services(self.service)
 
@@ -53,7 +55,7 @@ class BLEConfigurator:
             key (str): The key to associate with the received value.
         """
         await char.written()  # Wait for a client to write
-        value = char.read()   # Read the written value
+        value = char.read()  # Read the written value
         value_str = value.decode().strip()
         print(f"[BLE] {key} received: {value_str}")
         self.received[key] = value_str
@@ -70,15 +72,14 @@ class BLEConfigurator:
                 150_000,
                 timeout_ms=60_000,
                 name=DEVICE_NAME,
-                services=[self.SERVICE_UUID]
+                services=[self.SERVICE_UUID],
             ) as conn:
 
                 print(f"[BLE] Advertising as '{DEVICE_NAME}', waiting for data...")
 
                 # Dynamically build write tasks for all characteristics
                 tasks = [
-                    self.wait_for_write(char, key)
-                    for key, char in self.chars.items()
+                    self.wait_for_write(char, key) for key, char in self.chars.items()
                 ]
 
                 await asyncio.gather(*tasks)

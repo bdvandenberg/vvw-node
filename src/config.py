@@ -25,7 +25,7 @@ def save_config(data):
 
     config["device_id"] = DEVICE_ID  # Always update device_id and device_name
     config["device_name"] = DEVICE_NAME
-    config.update(data)              # Overwrite/add new keys
+    config.update(data)  # Overwrite/add new keys
 
     with open(CONFIG_PATH, "w") as f:
         f.write(ujson.dumps(config))

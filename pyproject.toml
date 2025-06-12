@@ -21,6 +21,7 @@ dev = [
     "isort",
     "ruff",
     "mypy",
+    "types-ujson"
 ]
 
 [tool.pytest.ini_options]

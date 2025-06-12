@@ -1,16 +1,17 @@
 # main.py
 
+import asyncio
 import os
 import sys
 import time
-import asyncio
-import machine
-import bluetooth
 
+import bluetooth
+import machine
+
+from ble_setup import BLEConfigurator
 from config import CONFIG_PATH, load_config
 from led_status import LedStatus
-from ble_setup import BLEConfigurator
-from mqtt_handler import NodeApp 
+from mqtt_handler import NodeApp
 
 FATAL_LOG_PATH = "fatal_error.log"
 
@@ -20,6 +21,7 @@ class MainController:
     Entry point for the Pico Node firmware.
     Handles initial setup, BLE configuration, and normal MQTT operation.
     """
+
     def __init__(self):
         self.led = LedStatus()
         self.device_name = "PicoNode"
