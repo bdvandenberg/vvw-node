@@ -28,9 +28,6 @@ class BLEConfigurator:
     def __init__(self):
         """
         Initialize the BLE configurator.
-
-        Args:
-            device_name (str): The BLE advertisement name for this device.
         """
         self.received = {}
 

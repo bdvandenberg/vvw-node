@@ -24,7 +24,6 @@ class MainController:
 
     def __init__(self):
         self.led = LedStatus()
-        self.device_name = "PicoNode"
 
     async def run(self):
         """
