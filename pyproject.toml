@@ -6,6 +6,19 @@ build-backend = "setuptools.build_meta"
 name = "vvw-node"
 version = "0.1.0"
 description = "Pico W floor heating node"
+dependencies = [
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "mypy>=1.16.1",
+    "pytest>=8.4.0",
+    "pytest-black>=0.6.0",
+    "pytest-cov>=6.2.1",
+    "pytest-isort>=4.0.0",
+    "pytest-mock>=3.14.1",
+    "pytest-mypy>=1.0.1",
+    "pytest-ruff>=0.4.1",
+    "types-ujson>=5.10.0.20250326",
+]
 
 [project.optional-dependencies]
 dev = [
