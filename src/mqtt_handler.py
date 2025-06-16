@@ -1,21 +1,13 @@
-# mqtt_handler.py
-
 import time
-
 import machine
 import ujson
 from umqtt.simple import MQTTClient
 
 from connectivity import connect_wifi
 from ota import handle_ota_update
-from sensors import read_dht
 
 
 class RelayController:
-    """
-    Handles GPIO relay control.
-    """
-
     def __init__(self):
         self.relay_pins = {
             "relay1": machine.Pin(16, machine.Pin.OUT),
@@ -35,10 +27,6 @@ class RelayController:
 
 
 class MQTTHandler:
-    """
-    Manages MQTT connection and communication.
-    """
-
     def __init__(self, client_id: str, broker_ip: str, relay_ctrl: RelayController):
         self.client = MQTTClient(client_id, broker_ip)
         self.client.set_callback(self._callback)
@@ -70,18 +58,26 @@ class MQTTHandler:
         self.client.publish(topic, ujson.dumps(data))
 
     def disconnect(self):
+        self.client.publish(f"devices/{self.client_id}/status", b"offline")
         self.client.disconnect()
 
 
 class NodeApp:
-    """
-    Represents the Pico Node main application logic.
-    """
-
     def __init__(self, config: dict):
         self.config = config
         self.relay_ctrl = RelayController()
         self.mqtt = MQTTHandler(config["device_id"], config["mqtt_ip"], self.relay_ctrl)
+
+    def read_all_gpio(self):
+        values = {}
+        usable_pins = list(range(0, 23)) + list(range(26, 30))  # GPIO 0–22, 26–29
+        for pin_num in usable_pins:
+            try:
+                pin = machine.Pin(pin_num, machine.Pin.IN)
+                values[pin_num] = pin.value()
+            except Exception as e:
+                print(f"[GPIO] Could not read pin {pin_num}: {e}")
+        return {"gpio": values}
 
     def run(self):
         self.relay_ctrl.set_all(False)
@@ -97,9 +93,8 @@ class NodeApp:
             while True:
                 self.mqtt.check_msg()
                 if time.ticks_diff(time.ticks_ms(), last_pub) > 5000:
-                    data = read_dht()
-                    if data:
-                        self.mqtt.publish_sensor_data(data)
+                    data = self.read_all_gpio()
+                    self.mqtt.publish_sensor_data(data)
                     last_pub = time.ticks_ms()
                 time.sleep(0.1)
         finally:
